@@ -46,6 +46,7 @@ public:
    */
   void stats(const char *when) const;
 
+
 private:
   /**
    * Returns a pointer to the Elf Symbol in the Dynamic Symbol table
@@ -71,7 +72,9 @@ private:
    */
   CustomElf(Mappable *mappable, const char *path)
   : LibHandle(path), mappable(mappable), init(0), fini(0), initialized(false)
-  { }
+  {
+     saved_path = path;
+  }
 
   /**
    * Returns a pointer relative to the base address where the library is
@@ -115,6 +118,11 @@ private:
    * Returns whether this succeeded or failed.
    */
   bool RelocateJumps();
+
+  /**
+   * Update MIPS GOT Table
+   */
+  bool RelocateGotEntries();
 
   /**
    * Call initialization functions (.init/.init_array)
@@ -164,6 +172,9 @@ private:
   /* Symbol table */
   UnsizedArray<Elf::Sym> symtab;
 
+  /* Proceedure Link Table (PLT) and Global Offset Table (GOT) */
+  UnsizedArray<unsigned> plt_got;
+
   /* Buckets and chains for the System V symbol hash table */
   Array<Elf::Word> buckets;
   UnsizedArray<Elf::Word> chains;
@@ -185,7 +196,17 @@ private:
    * (.init_array/.fini_array) */
   Array<void *> init_array, fini_array;
 
+
   bool initialized;
+
+#if 1 || defined(ANDROID_MIPS_LINKER)
+  /* TODO: Make Private and add Method to set. */
+  unsigned mips_symtabno;
+  unsigned mips_local_gotno;
+  unsigned mips_gotsym;
+  const char *saved_path;
+#endif
+
 };
 
 #endif /* CustomElf_h */

@@ -342,9 +342,11 @@ extern "C" int extractLibs = 0;
 static void
 extractFile(const char * path, Zip::Stream &s)
 {
+  struct stat status;
   uint32_t size = s.GetUncompressedSize();
 
-  struct stat status;
+  log("%s(path:'%s', &s)", __func__, path);
+
   if (!stat(path, &status) &&
       status.st_size == size &&
       apk_mtime < status.st_mtime)
@@ -396,11 +398,13 @@ extractFile(const char * path, Zip::Stream &s)
     __android_log_print(ANDROID_LOG_ERROR, "GeckoLibLoad", "inflateEnd failed: %s", strm.msg);
 
   close(fd);
-#ifdef ANDROID_ARM_LINKER
+
+#if defined(ANDROID_ARM_LINKER) || defined(ANDROID_MIPS_LINKER)
   /* We just extracted data that is going to be executed in the future.
    * We thus need to ensure Instruction and Data cache coherency. */
   cacheflush((unsigned) buf, (unsigned) buf + size, 0);
 #endif
+
   munmap(buf, size);
 }
 #endif
@@ -531,6 +535,9 @@ static void * mozload(const char * path, Zip *zip)
 
   void *handle;
   Zip::Stream s;
+
+  log("%s(path:'%s', zip:%p)", __func__, path, zip);
+
   if (!zip->GetStream(path, &s))
     return NULL;
 
@@ -581,10 +588,11 @@ static void * mozload(const char * path, Zip *zip)
 
     if (cache_fd < 0) {
       extractLib(s, buf);
-#ifdef ANDROID_ARM_LINKER
+#if defined(ANDROID_ARM_LINKER) || defined(ANDROID_MIPS_LINKER)
       /* We just extracted data that is going to be executed in the future.
        * We thus need to ensure Instruction and Data cache coherency. */
       cacheflush((unsigned) buf, (unsigned) buf + s.GetUncompressedSize(), 0);
+      breakpoint();	
 #endif
       addLibCacheFd(path, fd, lib_size, buf);
     }

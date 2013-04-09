@@ -12,7 +12,7 @@ set print object on
 def prun
         tbreak main
         run
-	set auto-solib-add 0
+        set auto-solib-add 0
         cont
 end
 
@@ -20,7 +20,7 @@ end
 def pmail
         tbreak main
         run -mail
-	set auto-solib-add 0
+        set auto-solib-add 0
         cont
 end
 
@@ -47,9 +47,9 @@ def pu
       set $scratch[$scratch_idx++] = *(char*)$uni++
     else
       if ($scratch_idx > 0)
-	set $scratch[$scratch_idx] = '\0'
-	print $scratch
-	set $scratch_idx = 0
+        set $scratch[$scratch_idx] = '\0'
+        print $scratch
+        set $scratch_idx = 0
       end
       print /x *(short*)$uni++
     end
@@ -173,3 +173,138 @@ end
 def ft
   call nsFrame::DumpFrameTree($arg0)
 end
+
+#####################################################################################
+#
+# MIPS Additions:
+#    gdb currently needs Mozilla code to appears to be under Android mr1 repo via symlink.
+#
+
+
+def set_ElfLoader_breakpoints
+  break breakpoint
+  break __wrap_dlopen
+  break __wrap_dlerror
+  break __wrap_dlsym
+  break __wrap_dlclose
+  break __wrap_dladdr
+  break __wrap_dl_iterate_phdr
+  break SystemElf::GetSymbolPtr
+  break SystemElf::Load
+  break ElfLoader::Load
+end
+
+document set_ElfLoader_breakpoints
+        Sets breakpoints in mozglue/linker/ElfLoader.cpp
+end
+
+def set_CustomElf_brealpoints
+  break breakpoint
+  break CustomElf::Load
+  break CustomElf::LoadSegment
+  break CustomElf::InitDyn
+  break CustomElf::Relocate
+  break CustomElf::RelocateJumps
+  break CustomElf::RelocateGotEntries
+  break CustomElf::CallInit
+  break CustomElf::CallFini
+end
+
+document set_CustomElf_brealpoints
+        Sets CustomElf breakpoints for debugging CustomElf MIPS Code.
+end
+
+def set_dvm_breakpoints
+  break breakpoint
+  break setup_nss_functions
+  break dvmCallJNIMethod
+  break dvmPlatformInvoke
+  break dvmResolveNativeMethod:115
+  break dvmCheckCallJNIMethod
+  break dvmCallJNIMethod
+end
+
+document set_dvm_breakpoints
+        Sets dvm breakpoints for debugging Linking of MIPS Code.
+end
+
+def set_apk_breakpoints
+  break loadGeckoLibs
+  break extractFile
+  break extractLib
+  break getLibraryCache
+  break ensureLibCache
+  break fillLibCache
+  break lookupLibCacheFd
+  break addLibCacheFd
+  break mozload
+end
+
+document set_apk_breakpoints
+        Sets APKOpen breakpoints for debugging Linking of MIPS Code. Code not currently compiled in.
+end
+
+def set_other_linker_breakpoints
+  break insert_soinfo_into_debug_map
+  break remove_soinfo_from_debug_map
+  break notify_gdb_of_load
+  break notify_gdb_of_unload
+  break notify_gdb_of_libraries
+  break alloc_info
+  break free_info
+# break dl_unwind_find_exidx
+  break dl_iterate_phdr
+  break _elf_lookup
+# break elfhash
+  break _do_lookup
+  break lookup_in_library
+  break lookup
+  break find_containing_library
+  break find_containing_symbol
+  break _open_lib
+  break open_library
+
+# break is_prelinked
+# break verify_elf_object
+# break get_lib_extents
+# break reserve_mem_region
+# break alloc_mem_region
+# break load_segments
+# break load_library
+# break load_mapped_library
+# break init_library
+  break find_library
+# break find_mapped_library
+
+  break unload_library
+  break reloc_library
+end
+
+document set_other_linker_breakpoints
+        Sets other-licenses/android/linker.c  breakpoints for debugging Linking of MIPS Code.
+end
+
+def set_solib_stuff
+#  set solib-absolute-prefix /home/piet/src/mr1/out/target/product/generic_mips/symbols
+#  set solib-search-path     /home/piet/src/mr1/out/target/product/generic_mips/symbols/system/lib:/home/piet/src/mr1/mozilla/src.3/objdir-droid/mozglue/build:/home/piet/src/mozilla/src.3/objdir-droid/mozglue/build
+
+  set solib-absolute-prefix /home/piet/src/mr1/mozilla/src.3/objdir-droid/mozglue/build
+  set solib-search-path     /home/piet/src/mr1/mozilla/src.3/objdir-droid/mozglue/build:/home/piet/src/mr1/out/target/product/generic_mips/symbols/system/lib
+end
+
+document set_solib_stuff
+        Set solib-absolute-prefix and solib-search-path so source code is found.
+end
+
+def setup
+  set_solib_stuff
+  set_ElfLoader_breakpoints
+# set_CustomElf_brealpoints
+# set_dvm_breakpoints
+end
+
+document setup
+   set shared library paths and initial breakpoints
+end
+
+

@@ -148,6 +148,16 @@ struct soinfo
     unsigned ARM_exidx_count;
 #endif
 
+#ifdef ANDROID_MIPS_LINKER
+#if 0
+     /* not yet */
+     unsigned *mips_pltgot
+#endif
+     unsigned mips_symtabno;
+     unsigned mips_local_gotno;
+     unsigned mips_gotsym;
+#endif
+
     unsigned refcount;
     struct link_map linkmap;
 };

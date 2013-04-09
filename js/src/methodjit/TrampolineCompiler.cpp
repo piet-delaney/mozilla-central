@@ -32,7 +32,7 @@ typedef JSC::MacroAssembler::Address Address;
 bool
 TrampolineCompiler::compile()
 {
-#ifdef JS_METHODJIT_SPEW
+#if defined(JS_METHODJIT_SPEW)
     JMCheckLogging();
 #endif
 

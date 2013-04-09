@@ -41,7 +41,7 @@ override NSBUILDROOT :=
 endif
 
 ifdef GNU_CC
-MODULE_OPTIMIZE_FLAGS = -O3
+MODULE_OPTIMIZE_FLAGS = -O0 -g
 endif
 
 ifndef COMPILER_DEPEND

@@ -175,6 +175,9 @@ if test -n "$gonkdir" ; then
     arm)
         ARCH_DIR=arch-arm
         ;;
+    mips)
+        ARCH_DIR=arch-mips
+        ;;
     i?86)
         ARCH_DIR=arch-x86
         ;;

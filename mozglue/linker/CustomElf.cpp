@@ -13,6 +13,22 @@
 using namespace Elf;
 using namespace mozilla;
 
+#if 0
+#undef  debug
+#define debug log
+#endif
+
+void breakpoint(void) {
+    debug("%s()", __func__);
+}
+
+void breakpoint2(void) {
+    debug("%s()", __func__);
+    breakpoint();
+}
+
+
+
 #ifndef PAGE_SIZE
 #define PAGE_SIZE 4096
 #endif
@@ -452,10 +468,23 @@ CustomElf::LoadSegment(const Phdr *pt_load) const
 
 namespace {
 
+#if 0
 void debug_dyn(const char *type, const Dyn *dyn)
 {
+  log("%s 0x%08" PRIxAddr, type, dyn->d_un.d_val);
   debug("%s 0x%08" PRIxAddr, type, dyn->d_un.d_val);
 }
+
+#else
+int debug_dyn_verbose = 0;
+#define debug_dyn(type, dyn)                                    \
+{                                                               \
+  if (debug_dyn_verbose) {                                      \
+    log("%s 0x%08" PRIxAddr, (type), (dyn)->d_un.d_val);        \
+    debug("%s 0x%08" PRIxAddr, (type), dyn->d_un.d_val);        \
+  }                                                             \
+}
+#endif
 
 } /* anonymous namespace */
 
@@ -467,10 +496,13 @@ CustomElf::InitDyn(const Phdr *pt_dyn)
   const Dyn *end_dyn = GetPtr<Dyn>(pt_dyn->p_vaddr + pt_dyn->p_filesz);
   std::vector<Word> dt_needed;
   size_t symnum = 0;
+
+  log("%s(pt_dyn:%p) { 11-Jly-2012 ", __func__, (void *)pt_dyn);
+
   for (const Dyn *dyn = first_dyn; dyn < end_dyn && dyn->d_tag; dyn++) {
     switch (dyn->d_tag) {
       case DT_NEEDED:
-        debug_dyn("DT_NEEDED", dyn);
+        debug_dyn("DT_NEEDED (Shared Library Needed)", dyn);
         dt_needed.push_back(dyn->d_un.d_val);
         break;
       case DT_HASH:
@@ -533,6 +565,7 @@ CustomElf::InitDyn(const Phdr *pt_dyn)
         break;
       case DT_PLTGOT:
         debug_dyn("DT_PLTGOT", dyn);
+        plt_got.Init(GetPtr(dyn->d_un.d_ptr));
         break;
       case DT_INIT:
         debug_dyn("DT_INIT", dyn);
@@ -559,12 +592,14 @@ CustomElf::InitDyn(const Phdr *pt_dyn)
         fini_array.InitSize(dyn->d_un.d_val);
         break;
       case DT_PLTREL:
+        debug_dyn("DT_PLTREL", dyn);
         if (dyn->d_un.d_val != RELOC()) {
           log("%s: Error: DT_PLTREL is not " STR_RELOC(), GetPath());
           return false;
         }
         break;
       case DT_FLAGS:
+        debug_dyn("DT_FLAGS:", dyn);
         {
            Word flags = dyn->d_un.d_val;
            /* Treat as a DT_TEXTREL tag */
@@ -579,25 +614,112 @@ CustomElf::InitDyn(const Phdr *pt_dyn)
                  GetPath(), flags);
         }
         break;
+
       case DT_SONAME: /* Should match GetName(), but doesn't matter */
+        debug_dyn("DT_SONAME: (Library .sO Name) ", dyn);
+        break;                                          /* Ignored */
+
       case DT_SYMBOLIC: /* Indicates internal symbols should be looked up in
                          * the library itself first instead of the executable,
-                         * which is actually what this linker does by default */
+                         * which is actually what this linker does by default
+                         */
+        debug_dyn("DT_SYMBOLIC:", dyn);
+        break;                                          /* Ignored */
+
       case RELOC(COUNT): /* Indicates how many relocations are relative, which
                           * is usually used to skip relocations on prelinked
-                          * libraries. They are not supported anyways. */
+                          * libraries. They are not supported anyways.
+                          */
+        debug_dyn("RELOC:", dyn);
+        break;                                          /* Ignored */
+
       case UNSUPPORTED_RELOC(COUNT): /* This should error out, but it doesn't
                                       * really matter. */
+        debug_dyn("UNSUPPORTED_RELOC:", dyn);
+        break;                                          /* Ignored */
+
       case DT_VERSYM: /* DT_VER* entries are used for symbol versioning, which */
+        debug_dyn("DT_VERSYM:", dyn);
+        break;                                          /* Ignored */
+
       case DT_VERDEF: /* this linker doesn't support yet. */
+        debug_dyn("DT_VERDEF", dyn);
+        break;                                          /* Ignored */
+
       case DT_VERDEFNUM:
+        debug_dyn("DT_VERDEFNUM:", dyn);
+        break;                                          /* Ignored */
+
       case DT_VERNEED:
-      case DT_VERNEEDNUM:
-        /* Ignored */
+        debug_dyn("DT_VERDEFNUM:", dyn);                /* Ignored */
         break;
+
+      case DT_VERNEEDNUM:
+        debug_dyn("DT_VERNEEDNUM:", dyn);
+        break;                                          /* Ignored */
+
+#if 1 || defined(ANDROID_MIPS_LINKER)
+      case DT_MIPS_RLD_VERSION:
+        debug_dyn("DT_MIPS_RLD_VERSION: Currently Ignored.", dyn);
+        break;
+
+      case DT_MIPS_FLAGS:
+        debug_dyn("DT_MIPS_FLAGS: Currently Ignored.", dyn);
+        break;
+
+      case DT_MIPS_BASE_ADDRESS:
+        debug_dyn("DT_MIPS_BASE_ADDRESS: Currently Ignored.", dyn);
+        break;
+
+      case DT_MIPS_LOCAL_GOTNO:
+        debug_dyn("DT_MIPS_LOCAL_GOTNO: Currently Ignored! [FIX OK?]", dyn);
+        breakpoint();
+        this->mips_local_gotno = dyn->d_un.d_val;
+        break;
+
+      case DT_MIPS_SYMTABNO:
+        debug_dyn("DT_MIPS_SYMTABNO Currently Ignored! [FIX OK?]", dyn);
+        breakpoint();
+        this->mips_symtabno = dyn->d_un.d_val;
+        break;
+
+      case DT_MIPS_UNREFEXTNO:
+        debug_dyn("DT_MIPS_UNREFEXTNO: Currently Ignored.", dyn);
+        break;
+
+      case DT_MIPS_GOTSYM:
+        debug_dyn("DT_MIPS_GOTSYM: Currently Ignored! [FIX OK?]", dyn);
+        breakpoint();
+        this->mips_gotsym = dyn->d_un.d_val;
+        break;
+
+      /* Likely also Needed */
+      /* Android Linker Sets the DT_MIPS_RLD_MAP entry to the addres of _r_debug for GDB */
+      case DT_MIPS_RLD_MAP:
+        debug_dyn("DT_MIPS_RLD_MAP: Currently Ignored! [FIXME]", dyn);
+        breakpoint();
+        break;
+
+      case DT_MIPS_PLTGOT:
+        debug_dyn("DT_MIPS_PLTGOT: Currently Ignored! [FIXME]", dyn);
+        breakpoint();
+        break;
+
+      case DT_MIPS_RWPLT:
+        debug_dyn("DT_MIPS_RWPLT Currently Ignored", dyn);
+        break;
+
+      case DT_MIPS_EOL:
+        debug_dyn("DT_MIPS_EOL (NULL): Currently Ignored", dyn);
+        break;
+#endif  /* ANDROID_MIPS_LINKER */
+
       default:
-        log("%s: Warning: dynamic header type #%" PRIxAddr" not handled",
+        log("%s: Warning: dynamic header type #%" PRIxAddr" not handled; Currently Ignored.",
             GetPath(), dyn->d_tag);
+
+        breakpoint();
+        break;
     }
   }
 
@@ -617,34 +739,70 @@ CustomElf::InitDyn(const Phdr *pt_dyn)
   /* Load dependent libraries */
   for (size_t i = 0; i < dt_needed.size(); i++) {
     const char *name = strtab.GetStringAt(dt_needed[i]);
+
+#if 1 || defined(ANDROID_MIPS_LINKER)
+    RefPtr<LibHandle> handle =
+      ElfLoader::Singleton.Load(name, RTLD_GLOBAL, this);
+#else
     RefPtr<LibHandle> handle =
       ElfLoader::Singleton.Load(name, RTLD_GLOBAL | RTLD_LAZY, this);
+#endif
+
     if (!handle)
       return false;
     dependencies.push_back(handle);
   }
 
   /* Finish initialization */
-  return Relocate() && RelocateJumps() && CallInit();
+  return Relocate() && RelocateJumps() && RelocateGotEntries() && CallInit();
+}
+
+int debug_rel_verbose = 0;
+
+#define debug_rel(type)                         \
+{                                               \
+  if (debug_rel_verbose) {                      \
+      log("%s(%s):\n", __func__, (type));       \
+  }                                             \
 }
 
 bool
 CustomElf::Relocate()
 {
+  int return_on_error = 0;
+
+  log("CustomElf::Relocate %s() 11-Jly-2012", __func__);
+
   debug("Relocate %s @%p", GetPath(), static_cast<void *>(base));
   for (Array<Reloc>::iterator rel = relocations.begin();
        rel < relocations.end(); ++rel) {
+
     /* Location of the relocation */
     void *ptr = GetPtr(rel->r_offset);
 
+#if 0
+    log("%s: ptr:%p = GetPtr(rel:%p->r_offset:%x); rel->r_info:0x%x", __func__,  \
+             ptr,            rel, rel->r_offset,   rel->r_info);
+#endif
+
+/*
+ * For MIPS the R_RELATIVE may need the symboltable entry.
+ */
+#if 0 && !defined(ANDROID_MIPS_LINKER)
     /* R_*_RELATIVE relocations apply directly at the given location */
     if (ELF_R_TYPE(rel->r_info) == R_RELATIVE) {
+      debug_rel("R_RELATIVE: [Stock/non-MIPS]");
       *(void **) ptr = GetPtr(rel->GetAddend(base));
       continue;
     }
+#endif
+
     /* Other relocation types need a symbol resolution */
     const Sym sym = symtab[ELF_R_SYM(rel->r_info)];
     void *symptr;
+    const char *sym_name;
+
+    sym_name = (char *) strtab.GetStringAt(sym.st_name);
     if (sym.st_shndx != SHN_UNDEF) {
       symptr = GetPtr(sym.st_value);
     } else {
@@ -654,24 +812,82 @@ CustomElf::Relocate()
       symptr = GetSymbolPtrInDeps(strtab.GetStringAt(sym.st_name));
     }
 
-    if (symptr == NULL)
-      log("%s: Warning: relocation to NULL @0x%08" PRIxAddr,
+#if 1 || defined(ANDROID_MIPS_LINKER)
+    if ((symptr == NULL) &&
+        (ELF_R_TYPE(rel->r_info) != R_RELATIVE) &&
+        (ELF_R_TYPE(rel->r_info) != R_MIPS_NONE)) {
+      log("%s: Warning: Relocation entry to NULL SymPtr @0x%08" PRIxAddr,
           GetPath(), rel->r_offset);
+
+      breakpoint();
+    }
+#else
+    if (symptr == NULL) {
+      log("%s: Warning: Relocation entry to NULL SymPtr @0x%08" PRIxAddr,
+          GetPath(), rel->r_offset);
+
+      breakpoint();
+    }
+#endif
 
     /* Apply relocation */
     switch (ELF_R_TYPE(rel->r_info)) {
+
+#if 1 || defined(ANDROID_MIPS_LINKER)
+    case R_MIPS_NONE:
+        debug_rel("R_MIPS_NONE: (Begin of Relocation Entries) Ignored.");
+        break;
+#endif
+
     case R_GLOB_DAT:
+      debug_rel("R_GLOB_DAT:");
       /* R_*_GLOB_DAT relocations simply use the symbol value */
       *(void **) ptr = symptr;
       break;
+
     case R_ABS:
+      debug_rel("R_ABS:");
       /* R_*_ABS* relocations add the relocation added to the symbol value */
       *(const char **) ptr = (const char *)symptr + rel->GetAddend(base);
       break;
+
+#if 1 || defined(ANDROID_MIPS_LINKER)
+    case R_RELATIVE:
+      /*
+       * R_*_RELATIVE relocations apply directly at the given location (*ptr).
+       * For MIPS if we have a symboltable entry it's also added to
+       * the destination location (module base + rel->r_offset).
+       *
+       * ptr = GetPtr(rel->r_offset);
+       */
+      if (symptr == NULL) {
+          debug_rel("R_RELATIVE: [MIPS is Std with no SymPtr std REL] *ptr += base");
+          *(void **) ptr = GetPtr(rel->GetAddend(base));
+      } else {
+          /*
+           * Store Symbol.value + ADDEND; See:
+           *     http://bottomupcs.sourceforge.net/csbu/x3735.htm
+           *
+           * Same as R_ABS above ADDEND added to Symptr
+           */
+          debug_rel("R_RELATIVE: [MIPS Variant WITH Symbol.value R_ABS] *ptr += Symbol.value");
+          breakpoint2();
+          *(const char **) ptr = (const char *)symptr + rel->GetAddend(base);
+      }
+      break;
+#endif
+
     default:
-      log("%s: Unsupported relocation type: 0x%" PRIxAddr,
-          GetPath(), ELF_R_TYPE(rel->r_info));
-      return false;
+      log("%s: Unsupported relocation type: 0x%x; rel->r_info:0x%x" PRIxAddr,
+          GetPath(), ELF_R_TYPE(rel->r_info), rel->r_info);
+
+      breakpoint();
+
+      if (return_on_error) {    /* Normal is to return(false) on an Unsupported Relocation Type */
+        return false;
+      } else {
+        log("%s: NOT Returning flase as normal when a Unsupported Relocation Type is found", __func__);
+      }
     }
   }
   return true;
@@ -701,7 +917,7 @@ CustomElf::RelocateJumps()
       symptr = GetSymbolPtrInDeps(strtab.GetStringAt(sym.st_name));
 
     if (symptr == NULL) {
-      log("%s: %s: relocation to NULL @0x%08" PRIxAddr " for symbol \"%s\"",
+      log("%s: %s: Jump Relocation to NULL @0x%08" PRIxAddr " for symbol \"%s\"",
           GetPath(),
           (ELF_ST_BIND(sym.st_info) == STB_WEAK) ? "Warning" : "Error",
           rel->r_offset, strtab.GetStringAt(sym.st_name));
@@ -713,6 +929,114 @@ CustomElf::RelocateJumps()
   }
   return true;
 }
+
+#if 1 || defined(ANDROID_MIPS_LINKER)
+int RelocateGotEntries_verbose = 0;
+bool CustomElf::RelocateGotEntries()
+{
+    unsigned local_gotno, gotsym, symtabno;
+    unsigned *got;
+    Elf32_Sym *symtab;
+    const Sym *sym1;
+    unsigned g;
+
+    got = (unsigned *) &this->plt_got[0];
+    local_gotno = this->mips_local_gotno;
+    gotsym = this->mips_gotsym;
+    symtabno = this->mips_symtabno;
+    symtab = (Elf32_Sym *) &this->symtab[0];
+
+    /*
+     * got[0] is address of lazy resolver function
+     * got[1] may be used for a GNU extension
+     * set it to a recognisable address in case someone calls it
+     * (should be _rtld_bind_start)
+     * FIXME: maybe this should be in a separate routine
+     */
+
+    g = 0;
+    got[g++] = 0xdeadbeef;
+    if (got[g] & 0x80000000)
+        got[g++] = 0xdeadfeed;
+
+    /*
+     * Relocation of the local GOT entries alwasy needed for MIPS.
+     */
+    if (1) {
+        for (; g < local_gotno; g++) {
+            unsigned old_got = got[g];
+            unsigned new_got = (unsigned) GetPtr(old_got);
+
+            if (RelocateGotEntries_verbose) {
+              log("%s: old_got[g:%d]:0x%x = new_got:0x%x", __func__, g, old_got, new_got);
+            }
+            got[g] = new_got;
+        }
+    }
+
+    /* Now for the global GOT entries */
+    sym1 = symtab + gotsym;
+    if (sym1->st_shndx != SHN_UNDEF) {
+        log("%s: sym->st_shndx != SHN_UNDEF; WRONG!", __func__);
+    }
+    got = ((unsigned int *) &this->plt_got[0]) + local_gotno;
+    for (g = gotsym; g < symtabno; g++, sym1++, got++) {
+        // void *symptr;
+        const char *sym_name;
+        // unsigned base;
+        // Elf32_Sym *sym;
+        // const Sym *sym2;
+        unsigned long hash;
+        void *symptr;
+
+        /* This is an undefined reference... try to locate it */
+        // sym_name = (char *) this->strtab.contents + sym->st_name;
+        // sym_name = (char *) this->strtab.contents;
+        sym_name = (char *) strtab.GetStringAt(sym1->st_name);
+        hash = ElfHash(sym_name);
+        // sym2 = GetSymbol(sym_name);
+        // sym2 = GetSymbol(strtab.GetStringAt(sym->st_name), hash);
+        //
+        symptr = GetSymbolPtrInDeps(strtab.GetStringAt(sym1->st_name));
+        if (symptr == NULL) {
+            int binding = ELF32_ST_BIND(sym1->st_info);
+
+            log("%s: Can't locate symbol sym_name:'%s'", __func__, sym_name);
+            log("%s: Saved Path:'%s'", __func__, saved_path);
+#if 1
+            switch(binding) {
+            case STB_GLOBAL:
+                log("%s: Ignore for now; Though it's NOT just a weak symbol", __func__);
+                break;
+
+            case STB_WEAK:
+                log("%s: Ignore for now; it's just a weak symbol", __func__);
+                break;
+
+            default:
+                log("%s: Ignore for now; Don't know Binding", __func__);
+                break;
+            }
+            breakpoint2();
+
+#else
+            return false;
+#endif
+        }
+
+        /* FIXME: is this sufficient?
+         * For reference see NetBSD link loader
+         * http://cvsweb.netbsd.org/bsdweb.cgi/src/libexec/ld.elf_so/arch/mips/mips_reloc.c?rev=1.53&content-type=text/x-cvsweb-markup
+         */
+        // *got = (unsigned) GetPtr(sym->st_value);
+        //
+        *got = (unsigned) symptr;
+    }
+    return true;
+}
+#endif
+
+int foo;
 
 bool
 CustomElf::CallInit()

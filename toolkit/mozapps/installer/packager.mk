@@ -310,10 +310,14 @@ DIST_FILES += $(MOZ_CHILD_PROCESS_NAME)
 ifeq ($(CPU_ARCH),x86)
 ABI_DIR = x86
 else
+ifeq ($(CPU_ARCH),mips)
+ABI_DIR = mips
+else
 ifdef MOZ_THUMB2
 ABI_DIR = armeabi-v7a
 else
 ABI_DIR = armeabi
+endif
 endif
 endif
 

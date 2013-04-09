@@ -108,6 +108,67 @@
 #define STR_RELOC(n) "DT_REL" # n
 #define Reloc Rel
 
+#elif defined(__mips__)
+#define ELFMACHINE EM_MIPS
+
+#if 1
+/* Used at the beginning of the Relocation Section */
+#define R_MIPS_NONE 0
+
+/*
+ * Relocation constants are available in bitutils code:
+ *      git clone git://sources.redhat.com/git/binutils.git
+ */
+#ifndef R_MIPS_32
+#define R_MIPS_32 2
+#endif
+#ifndef R_MIPS_REL32
+#define R_MIPS_REL32 3
+#endif
+#ifndef R_MIPS_GLOB_DAT
+#define R_MIPS_GLOB_DAT 51
+#endif
+#ifndef R_MIPS_JUMP_SLOT
+#define R_MIPS_JUMP_SLOT 127
+#endif
+
+/*
+ * Relocations have two forms, REL and RELA, to fixup the code
+ * with an 'ADDEND' added to a symbol value. MIPS uses the older
+ * REL form where the 'ADDEND' is provided in the memory location
+ * that needs to have Symbol.value + ADDEND stored. For details see:
+ * 	http://bottomupcs.sourceforge.net/csbu/x3735.htm
+ */
+#define R_ABS R_MIPS_32
+#define R_REL R_MIPS_REL
+#define R_GLOB_DAT R_MIPS_GLOB_DAT
+#define R_JMP_SLOT R_MIPS_JUMP_SLOT
+#define R_RELATIVE R_MIPS_REL32
+#define RELOC(n) DT_REL ## n
+#define UNSUPPORTED_RELOC(n) DT_RELA ## n
+#define STR_RELOC(n) "DT_REL" # n
+#define Reloc Rel
+
+/* 
+ * Additional Dynamic TAGS chosen by MIPS and
+ * not defined above in incliude<elf.h> or below by Android.
+ */
+#define DT_MIPS_RLD_VERSION     0x70000001
+#define DT_MIPS_FLAGS      	0x70000005
+#define DT_MIPS_BASE_ADDRESS    0x70000006
+#define DT_MIPS_LOCAL_GOTNO     0x7000000a
+#define DT_MIPS_SYMTABNO      	0x70000011
+#define DT_MIPS_UNREFEXTNO      0x70000012
+#define DT_MIPS_GOTSYM		0x70000013
+
+#define DT_MIPS_RLD_MAP         0x70000016
+#define DT_MIPS_PLTGOT          0x70000032
+#define DT_MIPS_RWPLT           0x70000034
+
+#define DT_MIPS_EOL		0x00000000
+
+#endif
+
 #else
 #error Unknown ELF machine type
 #endif

@@ -192,10 +192,29 @@ SystemElf::GetSymbolPtr(const char *symbol) const
 /* Unique ElfLoader instance */
 ElfLoader ElfLoader::Singleton;
 
+
 TemporaryRef<LibHandle>
 ElfLoader::Load(const char *path, int flags, LibHandle *parent)
 {
   RefPtr<LibHandle> handle;
+
+#if 1
+  static int wait = 0;
+
+  log("ElfLoader::Load: About to wait Waiting for gdb to attach; set wait:%d == 0;", wait);
+  while(wait) {
+    int count = 0;
+
+    for(count = 0; count < 100000000; count++) {
+      if (wait  == 0)
+        break;
+    }
+    if (wait  == 0)
+      break;
+
+    log("ElfLoader::Load: Waiting for gdb to attach; set wait == 0;");
+  }
+#endif
 
   /* Handle dlopen(NULL) directly. */
   if (!path) {
@@ -630,7 +649,9 @@ SEGVHandler::SEGVHandler()
   action.sa_sigaction = &SEGVHandler::handler;
   sigemptyset(&action.sa_mask);
   action.sa_flags = SA_SIGINFO | SA_NODEFER | SA_ONSTACK;
+#if !defined(__mips__)
   action.sa_restorer = NULL;
+#endif
   sigaction(SIGSEGV, &action, &this->action);
 }
 

@@ -744,7 +744,7 @@ endif # ! OS2
 #
 
 # Make sure any compiled classes work with at least JVM 1.4
-JAVAC_FLAGS += -source 1.4
+JAVAC_FLAGS += -source 1.4 -g
 
 ifdef MOZ_DEBUG
 JAVAC_FLAGS += -g

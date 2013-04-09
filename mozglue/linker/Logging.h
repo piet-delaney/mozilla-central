@@ -7,7 +7,10 @@
 
 #ifdef ANDROID
 #include <android/log.h>
-#define log(...) __android_log_print(ANDROID_LOG_ERROR, "GeckoLinker", __VA_ARGS__)
+#define log(...) do {                                                                                            \
+    __android_log_print(ANDROID_LOG_ERROR, "GeckoLinker[0]", "Func:%s, Line:%d", __FUNCTION__, __LINE__);        \
+    __android_log_print(ANDROID_LOG_ERROR, "GeckoLinker[1]", __VA_ARGS__);                                       \
+} while (0)
 #else
 #include <cstdio>
 #define log(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__)

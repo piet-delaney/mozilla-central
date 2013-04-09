@@ -1,0 +1,5 @@
+export MOZCONFIG=$PWD/mozconfig.mips
+# export PATH=/opt/android-ndk-r8e_x86_64/toolchains/mipsel-linux-android-4.7/prebuilt/linux-x86_64/bin:/home/piet/bin:$PATH
+# export PATH=/opt/android-ndk-r8e_x86/toolchains/mipsel-linux-android-4.7/prebuilt/linux-x86/bin:/home/piet/bin:$PATH
+
+export PATH=/home/piet/src/mr1/mozilla/android-ndk-r8/toolchains/mipsel-linux-android-4.4.3/prebuilt/linux-x86/bin:/home/piet/bin:$PATH

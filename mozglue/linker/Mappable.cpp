@@ -277,6 +277,23 @@ MappableDeflate::~MappableDeflate() { }
 void *
 MappableDeflate::mmap(const void *addr, size_t length, int prot, int flags, off_t offset)
 {
+  log("MappableDeflate::mmap %s(addr:%p, length:%d, prot:%d, flags:%d, offset:0x%lx)", __func__,  \
+                                addr,    length,    prot,    flags,    offset);
+  static int wait = 0;
+
+  while(wait == 1) {
+    int count = 0;
+
+    for(count = 0; count < 100000000; count++) {
+      if (wait  == 0)
+        break;
+      }
+      if (wait  == 0)
+        break;
+
+      log("MappableDeflate::mmap Waiting for gdb to attach; set wait == 0;");
+  }
+
   MOZ_ASSERT(buffer);
   MOZ_ASSERT(!(flags & MAP_SHARED));
   flags |= MAP_PRIVATE;
@@ -314,7 +331,7 @@ MappableDeflate::mmap(const void *addr, size_t length, int prot, int flags, off_
       }
     }
   }
-#if defined(ANDROID) && defined(__arm__)
+#if defined(ANDROID) && (defined(__arm__) || defined(__mips__))
   if (prot & PROT_EXEC) {
     /* We just extracted data that may be executed in the future.
      * We thus need to ensure Instruction and Data cache coherency. */
@@ -426,6 +443,8 @@ private:
 bool
 MappableSeekableZStream::ensure(const void *addr)
 {
+  log("MappableSeekableZStream::ensure %s(addr:%p)", __func__, addr);
+
   debug("ensure @%p", addr);
   void *addrPage = reinterpret_cast<void *>
                    (reinterpret_cast<uintptr_t>(addr) & PAGE_MASK);
@@ -476,7 +495,7 @@ MappableSeekableZStream::ensure(const void *addr)
     if (!zStream.DecompressChunk(*buffer + chunkStart, chunk, length))
       return false;
 
-#if defined(ANDROID) && defined(__arm__)
+#if defined(ANDROID) && (defined(__arm__) || defined(__mips__))
     if (map->prot & PROT_EXEC) {
       /* We just extracted data that may be executed in the future.
        * We thus need to ensure Instruction and Data cache coherency. */
@@ -501,7 +520,7 @@ MappableSeekableZStream::ensure(const void *addr)
                            - mapOffset % zStream.GetChunkSize());
   const void *chunkEndAddr = reinterpret_cast<const void *>
                              (reinterpret_cast<uintptr_t>(chunkAddr) + length);
-  
+
   const void *start = std::max(map->addr, chunkAddr);
   const void *end = std::min(map->end(), chunkEndAddr);
   length = reinterpret_cast<uintptr_t>(end)
