@@ -10,5 +10,6 @@ ac_add_options --with-ccache
 ac_add_options --enable-tests
 ac_add_options --disable-crashreporter
 
+# See client.mk for Mozilla Make Options:
 mk_add_options MOZ_OBJDIR=./objdir-mips
 mk_add_options MOZ_MAKE_FLAGS="-j2 -s"
